@@ -1,5 +1,9 @@
 # dsh-html-live-preview
 
+[![npm version](https://img.shields.io/npm/v/dsh-html-live-preview?color=4d6bfe)](https://www.npmjs.com/package/dsh-html-live-preview)
+[![license](https://img.shields.io/npm/l/dsh-html-live-preview)](LICENSE)
+[![topic: dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-4d6bfe)](https://github.com/topics/dsh-plugin)
+
 **Live HTML preview inside [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) conversations.**
 The model calls one tool, and the HTML it writes is rendered in the chat as it streams — not as a code block, and not in a side panel.
 
@@ -90,6 +94,10 @@ open harness.html
 - **No network inside the frame**, by design. Visualizations that need data must inline it or load a library from the allowed CDNs.
 - **Truncated session windows.** If a recorded call fell outside the loaded window the card cannot rebuild the preview, and says so.
 - **Editing the plugin's own code needs a restart.** DSH hot-reloads profile manifests and patches, but client bundles and host modules are cached per process.
+
+## Releasing
+
+Tag-driven: `npm version patch && git push origin main --follow-tags` makes GitHub Actions verify the tag against the manifest, publish to npm through Trusted Publishing (with a provenance attestation), and open a GitHub release. See [RELEASING.md](RELEASING.md).
 
 ## License
 

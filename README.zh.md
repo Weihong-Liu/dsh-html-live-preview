@@ -109,6 +109,12 @@ open harness.html
 - **会话窗口截断**：如果记录的调用落在已加载窗口之外，卡片会说明无法重建预览。
 - **改插件自身代码需要重启**：DSH 只热重载 profile 清单与补丁，客户端 bundle 与宿主模块按进程缓存。
 
+## 发布
+
+tag 驱动：`npm version patch && git push origin main --follow-tags` 就会让 GitHub Actions
+校验 tag 与版本号、通过 npm Trusted Publishing 发布（带 provenance 证明）并自动建 Release。
+详见 [RELEASING.md](RELEASING.md)。
+
 ## 许可
 
 [MIT](LICENSE)
