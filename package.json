@@ -44,6 +44,11 @@
   "peerDependencies": {
     "@deepseek-ai/dsh-tools": "^0.1.7-rc.2"
   },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
     "access": "public"
