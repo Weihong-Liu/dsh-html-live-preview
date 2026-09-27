@@ -1,0 +1,4 @@
+{
+  "title": "HTML 实时预览",
+  "description": "把模型写的 HTML 直接渲染在会话里：沙箱 iframe、跟随主题、随生成实时更新。"
+}

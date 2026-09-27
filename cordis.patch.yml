@@ -1,0 +1,10 @@
+# The html-preview bundle patch: one host-plane row.
+#
+# The row is mounted at the deployment plane, so its tool lands in the tools
+# registry's GLOBAL layer, which every agent's scope chain inherits (a preset
+# contributes extra tools in its own layer; it does not mask the global one).
+# The row's package also carries `dsh.client`, so dsh-client-modules serves its
+# ./client half to the browser, where it registers the `render_html` tool view.
+- insert:
+    - id: html-preview
+      name: 'dsh-html-live-preview'

@@ -1,0 +1,67 @@
+{
+  "name": "dsh-html-live-preview",
+  "version": "1.0.0",
+  "description": "Live HTML preview inside DeepSeek Harness conversations: a render_html tool plus an inline, sandboxed, auto-sized renderer.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Weihong-Liu",
+  "homepage": "https://github.com/Weihong-Liu/dsh-html-live-preview#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Weihong-Liu/dsh-html-live-preview.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Weihong-Liu/dsh-html-live-preview/issues"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "deepseek-harness",
+    "html",
+    "preview",
+    "artifact",
+    "generative-ui"
+  ],
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-client-ui-chat"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.7-rc.2"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "meta": {
+    "title": "HTML Live Preview",
+    "description": "Renders HTML the model writes live inside the conversation, in a sandboxed frame that follows the app theme."
+  },
+  "icon": "./icon.svg",
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "locale/*.json",
+    "README.md"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check client.js"
+  }
+}

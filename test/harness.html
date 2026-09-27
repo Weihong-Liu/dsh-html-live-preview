@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>html-preview client harness</title>
+<style>
+  /* Approximates the DSH theme token surface so the plugin's token use is exercised. */
+  :root{
+    --dsw-alias-bg-base:#ffffff; --dsw-alias-bg-layer-1:#f7f7f8; --dsw-alias-bg-layer-2:#eeeef0;
+    --dsw-alias-label-primary:#1f1f1f; --dsw-alias-label-secondary:#5c5c5c;
+    --dsw-alias-label-tertiary:#8a8a8a; --dsw-alias-label-caption:#b4b4b4;
+    --dsw-alias-border-l1:rgba(0,0,0,.08); --dsw-alias-border-l2:rgba(0,0,0,.14); --dsw-alias-border-l3:rgba(0,0,0,.26);
+    --dsw-alias-brand-primary:#4d6bfe; --dsw-alias-link:#3d5af1;
+    --dsw-alias-state-error-primary:#e5484d; --dsw-alias-state-warn-primary:#f5a524;
+    --dsw-alias-state-success-primary:#30a46c; --dsw-alias-state-business-primary:#4d6bfe;
+    --dsw-alias-markdown-code-block:rgba(0,0,0,.05);
+    --dsw-alias-interactive-bg-hover:rgba(0,0,0,.06);
+    --dsw-alias-scrollbar-bg-l2:rgba(0,0,0,.2);
+    --dsw-radius-sm:6px; --dsw-radius-md:8px; --dsw-radius-lg:12px;
+    --dsw-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    --dsw-font-markdown-code-font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --dsw-focus-ring-color:#4d6bfe; --dsw-focus-ring-width:2px;
+    --dsh-content-font-size-secondary:13px; --dsh-content-font-delta:0px;
+  }
+  html.dark{
+    --dsw-alias-bg-base:#17181a; --dsw-alias-bg-layer-1:#1f2023; --dsw-alias-bg-layer-2:#26282c;
+    --dsw-alias-label-primary:#ececec; --dsw-alias-label-secondary:#a8a8a8;
+    --dsw-alias-label-tertiary:#8a8a8a; --dsw-alias-label-caption:#6a6a6a;
+    --dsw-alias-border-l1:rgba(255,255,255,.08); --dsw-alias-border-l2:rgba(255,255,255,.16); --dsw-alias-border-l3:rgba(255,255,255,.3);
+    --dsw-alias-markdown-code-block:rgba(255,255,255,.06);
+    --dsw-alias-interactive-bg-hover:rgba(255,255,255,.08);
+    --dsw-alias-scrollbar-bg-l2:rgba(255,255,255,.25);
+  }
+  body{margin:0;padding:20px 24px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-family)}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .bar button{padding:4px 10px;border-radius:999px;border:.5px solid var(--dsw-alias-border-l3);background:transparent;color:inherit;cursor:pointer;font-size:12px}
+  #mount{max-width:700px}
+  #probe{margin-top:16px;font:12px/1.6 ui-monospace,Menlo,monospace;color:var(--dsw-alias-label-tertiary);white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div class="bar">
+  <button id="b-stream1">1 · preparing (partial)</button>
+  <button id="b-stream2">2 · preparing (more)</button>
+  <button id="b-final">3 · result (finalize + script)</button>
+  <button id="b-error">4 · result (script throws)</button>
+  <button id="b-tall">5 · result (tall content)</button>
+  <button id="b-source">6 · toggle source view</button>
+  <button id="b-tail-closed">7 · turn tail (closed turn)</button>
+  <button id="b-tail-open">8 · turn tail (running turn)</button>
+  <button id="b-dark">toggle dark</button>
+</div>
+<div id="mount"></div>
+<div id="probe"></div>
+
+<script src="./react.js"></script>
+<script src="./react-dom.js"></script>
+<script>
+  window.__errors = [];
+  window.__messages = [];
+  window.addEventListener('error', function (event) { window.__errors.push(String(event.message)); });
+  window.addEventListener('unhandledrejection', function (event) { window.__errors.push('rejection: ' + String(event.reason)); });
+  var nativeError = console.error;
+  console.error = function () { window.__errors.push(Array.prototype.map.call(arguments, String).join(' ')); nativeError.apply(console, arguments); };
+  window.addEventListener('message', function (event) { if (event.data && event.data.source === 'probe') window.__messages.push(event.data.type); });
+  /* The module system's only entry point. */
+  window.__ModuleLoader__ = { load: function (definition) { window.__definition = definition; } };
+</script>
+<script src="./client.js"></script>
+<script>
+(function () {
+  var definition = window.__definition;
+  var plugin = definition.factory(function (spec) {
+    if (spec === 'react') return React;
+    throw new Error('require missed the module table: ' + spec);
+  });
+  var registration = null;
+  var parts = {};
+  var ctx = {
+    effect: function (run) { return run(); },
+    locale: { register: function () { return function () {}; }, bind: function () { return function (key) { return key; }; } },
+    slots: {
+      inject: function (key, install) { window.__injectedKey = (window.__injectedKey || []).concat([key]); install(); },
+      register: function (options, component) {
+        registration = { options: options, component: component };
+        parts[options.name] = registration;
+        return function () {};
+      },
+    },
+  };
+  plugin.apply(ctx);
+  window.__parts = parts;
+  window.__plugin = { defined: definition.id, injected: window.__injectedKey, options: registration && registration.options };
+
+  var root = ReactDOM.createRoot(document.getElementById('mount'));
+  var state = { phase: 'preparing', raw: '', block: { phase: 'preparing' }, meta: null, isError: false, content: [] };
+
+  function stringify(value) { return JSON.stringify(value); }
+
+  window.__set = function (next) {
+    state = Object.assign({}, state, next);
+    render();
+  };
+
+  function blockOf() {
+    var base = { callId: 'call-1', name: 'render_html', turn: 1, step: 1, time: Date.now(), subCalls: [] };
+    if (state.phase === 'preparing') return Object.assign({ phase: 'preparing' }, base);
+    if (state.phase === 'start') return Object.assign({ phase: 'start', argsRaw: state.raw }, base);
+    return {
+      kind: 'tool-result', seq: 2, time: Date.now(), callId: 'call-1',
+      call: { name: 'render_html', argsRaw: state.raw }, callTime: Date.now(),
+      content: state.content.length ? state.content : [{ type: 'text', text: 'Rendered the HTML preview.' }],
+      isError: state.isError, subCalls: [], meta: state.meta || undefined,
+    };
+  }
+
+  function render() {
+    var props = {
+      phase: state.phase,
+      block: blockOf(),
+      callId: 'call-1',
+      toolName: 'render_html',
+      cwd: '/tmp/htmlprev-test',
+      home: '/Users/puppet',
+      openFile: function () {},
+      loadImage: function () { return Promise.resolve(''); },
+      inspect: function () {},
+      useDisclosure: function () { return { expanded: false, setExpanded: function () {}, toggle: function () {} }; },
+      t: function (key, params) { return key + (params ? '(' + stringify(params) + ')' : ''); },
+      useToolCallArgumentsPartial: function () { return state.raw; },
+    };
+    root.render(React.createElement(registration.component, props));
+  }
+
+  /* --- fixtures ------------------------------------------------------- */
+  var cardHtml = [
+    '<section id="demo" style="padding:14px;border:.5px solid var(--color-border-secondary);border-radius:var(--radius-lg);',
+    'background:var(--color-background-secondary);color:var(--color-text-primary);font:13px/1.5 var(--font-sans)">',
+    '<h3 style="margin:0 0 8px;font-size:14px;font-weight:600">HTML 实时预览 ✅</h3>',
+    '<div id="bars" style="display:flex;align-items:flex-end;gap:6px;height:90px"></div>',
+    '<button id="add" style="margin-top:10px;padding:4px 10px;border:.5px solid var(--color-border-primary);border-radius:999px;',
+    'background:transparent;color:var(--color-text-primary);cursor:pointer">+ 增加一条</button>',
+    '<span id="count" style="margin-left:8px;color:var(--color-text-secondary)"></span>',
+    '</section>',
+  ].join('');
+
+  var scriptHtml = [
+    '<' + 'script>',
+    'var data=[38,52,44,67,58];',
+    'var bars=document.getElementById("bars");',
+    'function draw(){bars.innerHTML="";data.forEach(function(v){var b=document.createElement("div");',
+    'b.style.cssText="flex:1;border-radius:4px 4px 2px 2px;background:var(--color-accent);height:"+v+"%";bars.appendChild(b);});',
+    'document.getElementById("count").textContent=data.length+" 条数据";}',
+    'document.getElementById("add").onclick=function(){data.push(30+Math.round(Math.random()*60));draw();};',
+    'draw();',
+    'parent.postMessage({source:"probe",type:"script-ran"},"*");',
+    '<' + '/script>',
+  ].join('\n');
+
+  var handlerProbe = '<img src="x-does-not-exist" alt="" onerror="parent.postMessage({source:\'probe\',type:\'handler-ran\'},\'*\')">';
+
+  var streamingPartial1 = '{"html":"' + cardHtml.replace(/"/g, '\\"') + handlerProbe.replace(/"/g, '\\"');
+  var streamingPartial2 = streamingPartial1 + '<div style=\\"margin-top:6px;color:var(--color-text-tertiary)\\">script 尚未到达</div>';
+  var finalArgs = stringify({ html: cardHtml + handlerProbe + scriptHtml, title: '流式渲染演示', height: 0 });
+  var throwingArgs = stringify({
+    html: cardHtml + '<' + 'script>throw new Error("preview 内部报错")<' + '/script>',
+    title: '脚本报错演示',
+  });
+
+  var transcript = [];
+  function note(text) { transcript.push(text); document.getElementById('probe').textContent = transcript.join('\n'); }
+
+  document.getElementById('b-stream1').onclick = function () { note('phase=preparing partial#1'); window.__set({ phase: 'preparing', raw: streamingPartial1 }); };
+  document.getElementById('b-stream2').onclick = function () { note('phase=preparing partial#2'); window.__set({ phase: 'preparing', raw: streamingPartial2 }); };
+  document.getElementById('b-final').onclick = function () {
+    note('phase=result complete args');
+    window.__set({ phase: 'result', raw: finalArgs, meta: { title: '流式渲染演示', characters: finalArgs.length } });
+  };
+  document.getElementById('b-error').onclick = function () {
+    note('phase=result script throws');
+    window.__set({ phase: 'result', raw: throwingArgs, meta: { title: '脚本报错演示' }, isError: false });
+  };
+  var tallArgs = stringify({
+    html: '<div style="font:13px/1.6 var(--font-sans);color:var(--color-text-primary)">' +
+      '<h3 style="margin:0 0 8px">高内容：自动高度上限与展开</h3>' +
+      (function () { var out = ''; for (var i = 1; i <= 40; i += 1) out += '<p style="margin:4px 0">第 ' + i + ' 行：卡片会先把高度限制在 620px，超出部分可展开。</p>'; return out; }()) +
+      '</div>',
+    title: '高内容演示',
+  });
+  document.getElementById('b-tall').onclick = function () {
+    note('phase=result tall content');
+    window.__set({ phase: 'result', raw: tallArgs, meta: { title: '高内容演示' } });
+  };
+  document.getElementById('b-source').onclick = function () {
+    var button = document.querySelector('.dshx-action[aria-label="action.source"]');
+    if (button) button.click();
+    note('source view toggled');
+  };
+  document.getElementById('b-dark').onclick = function () {
+    document.documentElement.classList.toggle('dark');
+    note('theme toggled: ' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light'));
+  };
+
+  /* --- turn tail fixtures -------------------------------------------- */
+  var storedBlock = {
+    kind: 'tool-result', seq: 9, time: Date.now(), callId: 'call-tail-1',
+    call: { name: 'render_html', argsRaw: finalArgs }, callTime: Date.now(),
+    content: [{ type: 'text', text: 'Rendered the HTML preview.' }], isError: false,
+    subCalls: [], meta: { title: '流式渲染演示' },
+  };
+  var tailNodes = [{ kind: 'tool-call', anchorSeq: 1, data: { root: storedBlock } }];
+  var tailSource = {
+    subscribe: function () { return function () {}; },
+    getSnapshot: function () { return tailNodes; },
+  };
+  var fakeStore = { turnDataSource: function () { return tailSource; } };
+
+  function renderTail(status) {
+    var props = {
+      turn: { turn: 3, status: status, start: undefined, end: undefined, steps: [] },
+      seq: 12,
+      openFile: function () {},
+      useChat: function (selector) { return selector({ nodes: fakeStore }); },
+      t: function (key) { return key; },
+    };
+    root.render(React.createElement(parts['conversation.chat.turnTail'].component, props));
+  }
+
+  document.getElementById('b-tail-closed').onclick = function () { note('turn tail: closed turn'); renderTail('closed'); };
+  document.getElementById('b-tail-open').onclick = function () { note('turn tail: running turn'); renderTail('open'); };
+
+  window.__probeState = function () {
+    var frame = document.querySelector('.dshx-frame');
+    var card = document.querySelector('.dshx-card');
+    return {
+      plugin: window.__plugin,
+      errors: window.__errors,
+      messages: window.__messages,
+      styleTags: document.querySelectorAll('style[data-plugin="dsh-html-live-preview"]').length,
+      hasCard: !!card,
+      state: card && card.getAttribute('data-state'),
+      summary: card && card.querySelector('.dshx-summary') && card.querySelector('.dshx-summary').innerText,
+      title: card && card.querySelector('.dshx-title') && card.querySelector('.dshx-title').innerText,
+      frameHeight: frame && frame.style.height,
+      frameSandbox: frame && frame.getAttribute('sandbox'),
+      actions: document.querySelectorAll('.dshx-action').length,
+      clipButton: !!document.querySelector('.dshx-clipButton'),
+      sourceVisible: !!document.querySelector('.dshx-source'),
+      stageDisplay: document.querySelector('.dshx-stage') && document.querySelector('.dshx-stage').style.display,
+      diagnostics: card && card.querySelector('.dshx-noteText') ? card.querySelector('.dshx-noteText').innerText : null,
+    };
+  };
+
+  window.__set({ phase: 'preparing', raw: '' });
+  note('harness ready');
+}());
+</script>
+</body>
+</html>

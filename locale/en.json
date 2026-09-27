@@ -1,0 +1,4 @@
+{
+  "title": "HTML Live Preview",
+  "description": "Renders HTML the model writes live inside the conversation, in a sandboxed frame that follows the app theme."
+}
