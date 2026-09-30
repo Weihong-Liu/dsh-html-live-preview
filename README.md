@@ -21,7 +21,7 @@ The model calls one tool, and the HTML it writes is rendered in the chat as it s
 
 ## Requirements
 
-- DeepSeek Harness with the **web** profile: `dsh web` (verified against `0.1.7-rc.2`).
+- DeepSeek Harness with the **web** profile: `dsh web` (verified against `0.1.7-rc.2` and `0.2.0-rc.1`).
 - The plugin declares `@deepseek-ai/dsh-tools` as a peer, so DSH refuses to load it on a runtime outside that range instead of failing at the first call.
 
 ## Install
@@ -74,7 +74,7 @@ The frame itself:
 
 ## Verification
 
-Verified against a real DSH Web instance with real model calls (screenshots in [screenshots/](screenshots)): the tool row renders the call, the turn tail keeps previews under their replies after those turns closed, heights came back measured (490px / 260px), and the console stayed clean.
+Verified against a real DSH Web instance with real model calls, on 0.1.7-rc.2 and re-verified on 0.2.0-rc.1 (screenshots in [screenshots/](screenshots)): the tool row renders the call, the turn tail keeps previews under their replies after those turns closed, heights came back measured (490px / 260px), and the console stayed clean.
 
 The renderer itself is covered by [test/harness.html](test/harness.html), a standalone page that loads this plugin's `client.js` against real React and exercises streaming, finalizing, sanitizing, height caps, expansion, the source view, theme switching and in-frame error reporting:
 
@@ -90,7 +90,7 @@ open harness.html
 ## Limitations
 
 - **No fenced-code-block rendering.** DSH has no extension point for custom Markdown fence renderers (`renderCode` inside `ui-primitives` is hard-coded), so ```` ```html ```` stays a code block. A tool call is the supported path.
-- **DSH updates.** The declared peer range is `^0.1.7-rc.2`. Outside it DSH disables this plugin and says why, rather than breaking at runtime; widening the range is a one-line change plus a re-check.
+- **DSH updates.** The declared peer range is `^0.1.7-rc.2 || ^0.2.0-rc.1`, covering the 0.1.x and 0.2.x lines. A runtime outside it disables this plugin with a message naming the mismatch and the `dsh plugin allow-version` escape hatch, rather than breaking at the first call; adding a verified line is a one-line change.
 - **No network inside the frame**, by design. Visualizations that need data must inline it or load a library from the allowed CDNs.
 - **Truncated session windows.** If a recorded call fell outside the loaded window the card cannot rebuild the preview, and says so.
 - **Editing the plugin's own code needs a restart.** DSH hot-reloads profile manifests and patches, but client bundles and host modules are cached per process.
